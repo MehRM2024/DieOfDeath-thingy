@@ -855,17 +855,6 @@ Players.LocalPlayer.Character:SetAttribute("WalkSpeedModifier", 0)
 end
     end
 })
-TabSkills:CreateToggle({Name = "Anti Taunt"; CurrentValue = false; Callback = function(Value)
-AntiTaunt = Value
-if AntiTaunt == true then
-LocalPlayer.PlayerGui.MainGui.RoundUI.TauntTemplate:Destroy()
-else
-if LocalPlayer.PlayerGui.MainGui.RoundUI:FindFirstChild("TauntTemplate") == nil then
-local a = BackupEffect:Clone()
-a.Parent = LocalPlayer.PlayerGui.MainGui.RoundUI
-end
-end
-end; })
 local skillParagraph = tabSkills:CreateParagraph({
     Title = "Selected Skills",
     Content = "Skill 1: "..selectedSkill1.."\nSkill 2: "..selectedSkill2
