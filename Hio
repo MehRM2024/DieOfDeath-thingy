@@ -837,7 +837,28 @@ local skillList = {"Revolver","Punch","Block","Caretaker","Hotdog","Taunt","Cloa
 local selectedSkill1, selectedSkill2 = "Revolver", "Caretaker"
 
 -- Tab GUI
-local tabSkills = Window:CreateTab("Skills & Selector", 4483362458)
+local tabSkills = Window:CreateTab("Skills selector and similar", 4483362458)
+local BackupEffect = game:GetService("ReplicatedStorage").Events.RemoteEvents.TauntEffect:Clone()
+BackupEffect.Parent = game.LogService
+local AntiTaunt = false
+TabSkills:CreateToggle({Name = "Anti Taunt"; CurrentValue = false; Callback = function(Value)
+AntiTaunt = Value
+if AntiTaunt == true then
+LocalPlayer.PlayerGui.MainGui.RoundUI.TauntTemplate:Destroy()
+else
+if LocalPlayer.PlayerGui.MainGui.RoundUI:FindFirstChild("TauntTemplate") == nil then
+local a = BackupEffect:Clone()
+a.Parent = LocalPlayer.PlayerGui.MainGui.RoundUI
+end
+end
+end; })
+
+LocalPlayer.PlayerGui.MainGui.RoundUI.ChildAdded:Connect(function(child)
+if child.Name == "TauntTemplate" and AntiTaunt == true then
+child:Destroy()
+Players.LocalPlayer.Character:SetAttribute("WalkSpeedModifier", 0)
+end
+end)
 local skillParagraph = tabSkills:CreateParagraph({
     Title = "Selected Skills",
     Content = "Skill 1: "..selectedSkill1.."\nSkill 2: "..selectedSkill2
