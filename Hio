@@ -1171,6 +1171,127 @@ mainConns.charAdded_gameplay = lp.CharacterAdded:Connect(function(char)
     end
 end)
 
+-- SERVICIOS
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local lp = Players.LocalPlayer
+
+-- CONFIG
+local AimRange = 10
+local AnimID = "rbxassetid://807876805228"
+
+-- ESTADO
+HitboxAutoTracer = false
+ClosestHRP = nil
+
+local function IsAnimationPlaying()
+    local ch = lp.Character
+    if not ch then return false end
+
+    local hum = ch:FindFirstChildOfClass("Humanoid")
+    if not hum then return false end
+
+    for _, track in ipairs(hum:GetPlayingAnimationTracks()) do
+        if track.Animation and track.Animation.AnimationId == AnimID then
+            return true
+        end
+    end
+
+    return false
+end
+local function IsKiller(player)
+    local ch = player.Character
+    if not ch then return false end
+
+    return ch:IsDescendantOf(workspace.GameAssets.Teams.Killer)
+end
+local function GetHRP(char)
+    return char and char:FindFirstChild("HumanoidRootPart")
+end
+local function GetClosestEnemy()
+    -- regla 1: animación debe estar activa
+    if not IsAnimationPlaying() then
+        return nil
+    end
+
+    local lpChar = lp.Character
+    if not lpChar then return nil end
+
+    local lpHRP = GetHRP(lpChar)
+    if not lpHRP then return nil end
+
+    local closest = nil
+    local minDist = AimRange
+
+    for _, plr in ipairs(Players:GetPlayers()) do
+        if plr ~= lp and not IsKiller(plr) and plr.Character then
+
+            local targetHRP = GetHRP(plr.Character)
+            if targetHRP then
+                local dist = (targetHRP.Position - lpHRP.Position).Magnitude
+
+                if dist <= minDist then
+                    closest = targetHRP
+                    minDist = dist
+                end
+            end
+        end
+    end
+
+    return closest
+end
+tabGameplay:CreateToggle({
+    Name="Enable AutoTracer",
+    CurrentValue=HitboxAutoTracer,
+    Callback=function(v)
+        HitboxAutoTracer = v
+        if not v then
+            ClosestHRP = nil
+        end
+    end
+})
+RunService.Heartbeat:Connect(function()
+    if HitboxAutoTracer then
+        ClosestHRP = GetClosestEnemy()
+    end
+end)
+local function EnableAutoTracer()
+    local success, err = pcall(function()
+        while task.wait() do
+            if HitboxAutoTracer and ClosestHRP then
+
+                local lpChar = lp.Character
+                if not lpChar then continue end
+
+                local hrp = lpChar:FindFirstChild("HumanoidRootPart")
+                if not hrp then continue end
+
+                local velOld = hrp.Velocity
+                local offset = ClosestHRP.Position - hrp.Position
+                local mag = offset.Magnitude
+
+                if mag > 0 then
+                    local force = offset.Unit * (mag * (mag < 32 and 10 or 13))
+                    hrp.Velocity = force
+                end
+
+                RunService.RenderStepped:Wait()
+
+                if hrp then
+                    hrp.Velocity = velOld
+                end
+            end
+        end
+    end)
+
+    if not success then
+        task.spawn(EnableAutoTracer)
+    end
+end
+
+task.spawn(EnableAutoTracer)
+
+
 -- ============================
 -- AntiWalls
 -- ============================
@@ -1255,7 +1376,8 @@ local function HoldImpl_CheckAttributes()
     local implementCooldown = char:GetAttribute("ImplementCooldown")
 
     if killerName=="Artful" and canTrigger and (implementCooldown==true or (type(implementCooldown)=="number" and implementCooldown>0)) then
-        HoldImpl_holdInAir(2,2.5)
+        task.wait(1)
+        HoldImpl_holdInAir(1.35,2.5)
         canTrigger=false
     end
 
@@ -1263,7 +1385,7 @@ local function HoldImpl_CheckAttributes()
 end
 
 task.spawn(function()
-    while task.wait(1) do  -- chỉnh 0.5 thành 1 để nhẹ hơn
+    while task.wait() do  -- chỉnh 0.5 thành 1 để nhẹ hơn
         HoldImpl_CheckAttributes()
         if unloaded then break end
     end
@@ -1278,6 +1400,57 @@ tabGameplay:CreateToggle({
         if v then HoldImpl_CheckAttributes() end
     end
 })
+
+-- Cargar valor guardado
+
+local CleanableFolder = game.Workspace.GameAssets.Debris.Cleanable
+
+-- Función para desactivar un EvilScary
+local function NeutralizeEvilScary(obj)
+    if obj.Name ~= "EvilScary" then return end
+
+    for _, child in ipairs(obj:GetChildren()) do
+        if child:IsA("TouchTransmitter") then
+            child:Destroy()
+        elseif child:IsA("BasePart") then
+            child.CanCollide = false
+            child.CanTouch = false
+            pcall(function()
+                child.CanQuery = false
+            end)
+        end
+    end
+
+    obj.CanCollide = false
+    obj.CanTouch = false
+    pcall(function()
+        obj.CanQuery = false
+    end)
+end
+
+-- Toggle real (formato igual al tuyo)
+local AntiEvilScaryToggle = tabGameplay:CreateToggle({
+    Name = "Anti Evil Scary",
+    CurrentValue = getgenv().AntiEvilScary1,
+    Callback = function(v)
+        getgenv().AntiEvilScary1 = v
+
+        if v then
+            -- Procesar los que ya existen
+            for _, obj in ipairs(CleanableFolder:GetChildren()) do
+                NeutralizeEvilScary(obj)
+            end
+        end
+    end
+})
+
+-- Al aparecer uno nuevo
+CleanableFolder.ChildAdded:Connect(function(child)
+    
+        NeutralizeEvilScary(child)
+    --end
+end)
+
 
 -- ============================
 -- No M1 when Blocking (You Killer)
