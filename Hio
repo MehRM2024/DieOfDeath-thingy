@@ -8,6 +8,9 @@ local Workspace = game:GetService("Workspace")
 local lp = Players.LocalPlayer or Players.PlayerAdded:Wait()
 _G.global_module_main = "https://raw.githubusercontent.com/NewNexer/NexerHub/refs/heads/main/Global-Module.luau"
 
+local CreateMessage = function(a) local instancename = (a=="Message" and a) or "Hint"; local msg = Instance.new(instancename,game:GetService("CoreGui")); msg.Text = ""; return msg end
+
+
 local Module = nil
 
 local msg = CreateMessage()
