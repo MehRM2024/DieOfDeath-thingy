@@ -1202,8 +1202,6 @@ mainConns.charAdded_gameplay = lp.CharacterAdded:Connect(function(char)
     end
 end)
 
--
-
 -- ============================
 -- AntiWalls
 -- ============================
