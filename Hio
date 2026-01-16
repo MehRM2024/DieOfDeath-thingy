@@ -8,6 +8,9 @@ local Workspace = game:GetService("Workspace")
 local lp = Players.LocalPlayer or Players.PlayerAdded:Wait()
 _G.global_module_main = "https://raw.githubusercontent.com/NewNexer/NexerHub/refs/heads/main/Global-Module.luau"
 
+local Module = nil
+
+Module = loadstring(game:HttpGet(_G.global_module_main))()
 
 connections = connections or {}
 mainConns = mainConns or {}
