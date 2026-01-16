@@ -1212,57 +1212,113 @@ otherTeamFolder.DescendantAdded:Connect(function(desc)
     if AntiWalls then HandleWallPart(desc) end
 end)
 
+--// Services
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+
+--// Player
+local lp = Players.LocalPlayer
+local Character = lp.Character or lp.CharacterAdded:Wait()
+local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
+
+--// Configuración (podés ajustar)
+local KilldroidMaxForce = 1e9
+local KilldroidPower = 5000
+
+--// Estado
 local KilldroidDD = false
-tabGameplay:CreateToggle({Name = "Infinite Flight"; CurrentValue = KilldroidDD; Callback = function(Value)
-KilldroidDD = Value
-end; })
---------------------------------------------------------------------------------------
-local KilldroidConfigEffects = nil
-local KilldroidFlightConfig = nil
-function ApplyKilldroidConfigurations()
-if KilldroidConfigEffects then
-KilldroidConfigEffects:Disconnect()
-KilldroidConfigEffects = nil
-end
-if KilldroidFlightConfig then
-KilldroidFlightConfig:Disconnect()
-KilldroidFlightConfig = nil
-end
-if not HumanoidRootPart then return end
-KilldroidConfigEffects = HumanoidRootPart.ChildAdded:Connect(function(c)
-if c.Name == "BodyVelocity" then
-c.MaxForce = Vector3.new(KilldroidMaxForce,KilldroidMaxForce,KilldroidMaxForce)
-c.P = KilldroidPower
-if KilldroidDD ~= true then return end
-task.spawn(function()
-pcall(function()
-KilldroidFlightConfig = game:GetService("RunService").RenderStepped:Connect(function()
-if c.Velocity.Y < 0 then
-c.Velocity = Vector3.new(c.Velocity.X,0,c.Velocity.Z)
-end
-end)
-end)
-end)
-end
-end)
-for _,c in next, HumanoidRootPart:GetChildren() do
-if c.Name == "BodyVelocity" then
-c.MaxForce = Vector3.new(KilldroidMaxForce,KilldroidMaxForce,KilldroidMaxForce)
-c.P = KilldroidPower
-if KilldroidDD ~= true then return end
-task.spawn(function()
-pcall(function()
-KilldroidFlightConfig = game:GetService("RunService").RenderStepped:Connect(function()
-if c.Velocity.Y < 0 then
-c.Velocity = Vector3.new(c.Velocity.X,0,c.Velocity.Z)
-end
-end)
-end)
-end)
-end
+
+--// Conexiones y cache
+local KilldroidConnections = {}
+local ActiveBodyVelocity = {}
+
+--// Limpieza total
+local function StopKilldroidFlight()
+	for _, conn in pairs(KilldroidConnections) do
+		if typeof(conn) == "RBXScriptConnection" then
+			pcall(function() conn:Disconnect() end)
+		end
+	end
+	KilldroidConnections = {}
+	ActiveBodyVelocity = {}
 end
 
+--// Maneja un BodyVelocity individual
+local function HandleBodyVelocity(bv)
+	if not KilldroidDD then return end
+	if not bv or not bv:IsA("BodyVelocity") then return end
+	if ActiveBodyVelocity[bv] then return end
+
+	ActiveBodyVelocity[bv] = true
+	bv.MaxForce = Vector3.new(KilldroidMaxForce, KilldroidMaxForce, KilldroidMaxForce)
+	bv.P = KilldroidPower
+
+	local conn
+	conn = RunService.RenderStepped:Connect(function()
+		if not KilldroidDD then
+			ActiveBodyVelocity[bv] = nil
+			if conn then conn:Disconnect() end
+			return
+		end
+
+		if not bv or not bv.Parent then
+			ActiveBodyVelocity[bv] = nil
+			if conn then conn:Disconnect() end
+			return
+		end
+
+		if bv.Velocity.Y < 0 then
+			bv.Velocity = Vector3.new(bv.Velocity.X, 0, bv.Velocity.Z)
+		end
+	end)
+
+	table.insert(KilldroidConnections, conn)
 end
+
+--// Aplica Infinite Flight
+function ApplyKilldroidConfigurations()
+	StopKilldroidFlight()
+	if not HumanoidRootPart then return end
+
+	-- BodyVelocity existentes
+	for _, c in ipairs(HumanoidRootPart:GetChildren()) do
+		if c:IsA("BodyVelocity") then
+			HandleBodyVelocity(c)
+		end
+	end
+
+	-- Nuevos BodyVelocity
+	KilldroidConnections.ChildAdded = HumanoidRootPart.ChildAdded:Connect(function(c)
+		if c:IsA("BodyVelocity") then
+			HandleBodyVelocity(c)
+		end
+	end)
+end
+
+--// Respawn safe
+lp.CharacterAdded:Connect(function(char)
+	Character = char
+	HumanoidRootPart = char:WaitForChild("HumanoidRootPart")
+	if KilldroidDD then
+		task.wait(0.2)
+		ApplyKilldroidConfigurations()
+	end
+end)
+
+--// TOGGLE (Rayfield / cualquier UI)
+tabGameplay:CreateToggle({
+	Name = "Infinite Flight",
+	CurrentValue = false,
+	Callback = function(v)
+		KilldroidDD = v
+		if v then
+			ApplyKilldroidConfigurations()
+		else
+			StopKilldroidFlight()
+		end
+	end
+})
+
 
 -- ============================
 -- Implement Fast Artful
