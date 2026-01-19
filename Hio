@@ -1427,7 +1427,7 @@ local function HoldImpl_CheckAttributes()
     local implementCooldown = char:GetAttribute("ImplementCooldown")
 
     if killerName=="Artful" and canTrigger and (implementCooldown==true or (type(implementCooldown)=="number" and implementCooldown>0)) then
-        task.wait(1.37)
+        task.wait(1.25)
         HoldImpl_holdInAir(0.7,1.5)
         canTrigger=false
     end
