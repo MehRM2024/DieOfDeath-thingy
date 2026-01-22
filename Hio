@@ -1427,7 +1427,7 @@ local function HoldImpl_CheckAttributes()
     local implementCooldown = char:GetAttribute("ImplementCooldown")
 
     if killerName=="Artful" and canTrigger and (implementCooldown==true or (type(implementCooldown)=="number" and implementCooldown>0)) then
-        task.wait(1.25)
+        task.wait(1.1)
         HoldImpl_holdInAir(0.7,1.5)
         canTrigger=false
     end
@@ -1454,53 +1454,144 @@ tabGameplay:CreateToggle({
 
 -- Cargar valor guardado
 
-local CleanableFolder = game.Workspace.GameAssets.Debris.Cleanable
+--// Services
+local Workspace = game:GetService("Workspace")
+local Players = game:GetService("Players")
 
--- Función para desactivar un EvilScary
-local function NeutralizeEvilScary(obj)
-    if obj.Name ~= "EvilScary" then return end
+--// State
+local AntiEvilScary = false
 
-    for _, child in ipairs(obj:GetChildren()) do
-        if child:IsA("TouchTransmitter") then
-            child:Destroy()
-        elseif child:IsA("BasePart") then
-            child.CanCollide = false
-            child.CanTouch = false
-            pcall(function()
-                child.CanQuery = false
-            end)
-        end
-    end
+--// Paths
+local Cleanable = Workspace
+    :WaitForChild("GameAssets")
+    :WaitForChild("Debris")
+    :WaitForChild("Cleanable")
 
-    obj.CanCollide = false
-    obj.CanTouch = false
-    pcall(function()
-        obj.CanQuery = false
-    end)
-end
+---------------------------------------------------------
+-- TOGGLE: Anti Evil Scary
+---------------------------------------------------------
 
--- Toggle real (formato igual al tuyo)
-local AntiEvilScaryToggle = tabGameplay:CreateToggle({
+tabGameplay:CreateToggle({
     Name = "Anti Evil Scary",
-    CurrentValue = getgenv().AntiEvilScary1,
-    Callback = function(v)
-        getgenv().AntiEvilScary1 = v
+    CurrentValue = AntiEvilScary,
+    Callback = function(Value)
+        AntiEvilScary = Value
 
-        if v then
-            -- Procesar los que ya existen
-            for _, obj in ipairs(CleanableFolder:GetChildren()) do
-                NeutralizeEvilScary(obj)
+        if not AntiEvilScary then
+            return
+        end
+
+        -- Limpiar existentes
+        for _, obj in ipairs(Cleanable:GetChildren()) do
+            if obj.Name == "EvilScary" then
+                Module:ClearTouchable(obj)
             end
         end
     end
 })
 
--- Al aparecer uno nuevo
-CleanableFolder.ChildAdded:Connect(function(child)
-    
-        NeutralizeEvilScary(child)
-    --end
+---------------------------------------------------------
+-- NUEVOS EvilScary (Auto clear)
+---------------------------------------------------------
+
+Cleanable.ChildAdded:Connect(function(child)
+    if AntiEvilScary and child.Name == "EvilScary" then
+        Module:ClearTouchable(child)
+    end
 end)
+
+---------------------------------------------------------
+-- BUTTON: Remove EvilScary Jumpscare
+---------------------------------------------------------
+
+tabGameplay:CreateButton({
+    Name = "Remove EvilScary Jumpscare",
+    Callback = function()
+        local playerGui = Players.LocalPlayer:WaitForChild("PlayerGui")
+        local mainGui = playerGui:FindFirstChild("MainGui")
+
+        if mainGui and mainGui:FindFirstChild("EvilScary") then
+            mainGui.EvilScary:Destroy()
+        else
+            Rayfield:Notification("Error!", "Already Removed!", 3, false)
+        end
+    end
+})
+
+---------------------------------------------------------
+-- SECTION: Pursuer
+---------------------------------------------------------
+
+tabGameplay:CreateSection("Pursuer")
+
+---------------------------------------------------------
+-- CONFIG
+---------------------------------------------------------
+
+local PursuerCleaveBoost = 6
+local PursuerConfigEffects = nil
+
+---------------------------------------------------------
+-- INPUT: Cleave Boost
+---------------------------------------------------------
+
+tabGameplay:CreateInput({
+    Name = "Cleave Boost",
+    PlaceholderText = tostring(PursuerCleaveBoost),
+    NumbersOnly = true,
+    OnEnter = true,
+    RemoveTextAfterFocusLost = false,
+    Callback = function(Value)
+        local num = tonumber(Value)
+        if num then
+            PursuerCleaveBoost = num
+        end
+    end
+})
+
+---------------------------------------------------------
+-- APPLY CONFIGURATIONS
+---------------------------------------------------------
+
+local function ApplyPursuerConfigurations()
+    -- Limpiar conexión anterior
+    if PursuerConfigEffects then
+        PursuerConfigEffects:Disconnect()
+        PursuerConfigEffects = nil
+    end
+
+    if not Character then return end
+    if PursuerCleaveBoost == 6 then return end
+
+    PursuerConfigEffects = Character
+        :GetAttributeChangedSignal("WalkSpeedModifier")
+        :Connect(function()
+
+            local current = Character:GetAttribute("WalkSpeedModifier")
+            if not current then return end
+
+            if current == 6 then
+                Character:SetAttribute("WalkSpeedModifier", PursuerCleaveBoost)
+            end
+        end)
+end
+
+---------------------------------------------------------
+-- BUTTON: Apply
+---------------------------------------------------------
+
+tabGameplay:CreateButton({
+    Name = "Apply Pursuer Configurations",
+    Callback = function()
+        ApplyPursuerConfigurations()
+        Rayfield:Notification(
+            "Success!",
+            "Applied configurations.",
+            3,
+            true
+        )
+    end
+})
 
 
 -- ============================
