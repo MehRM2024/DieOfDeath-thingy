@@ -1239,38 +1239,8 @@ end)
 -- AntiWalls
 -- ============================
 local AntiWalls = false
-tabGameplay:CreateToggle({
-    Name="Anti-Artful Walls",
-    CurrentValue=AntiWalls,
-    Callback=function(v) AntiWalls=v end
-})
 
-local function HandleWallPart(part)
-    if part and part.Name=="HumanoidRootPart" and part.Anchored==true then
-        part.CanCollide=false
-        part.CanTouch=false
-        part.Transparency=0.5
-    end
-end
-
-task.spawn(function()
-    while true do
-        task.wait(0.5)
-        if AntiWalls and Workspace:FindFirstChild("GameAssets") then
-            local teams = Workspace.GameAssets:FindFirstChild("Teams")
-            if teams and teams:FindFirstChild("Other") then
-                for _, desc in pairs(teams.Other:GetDescendants()) do
-                    HandleWallPart(desc)
-                end
-            end
-        end
-    end
-end)
-
-local otherTeamFolder = Workspace:WaitForChild("GameAssets"):WaitForChild("Teams"):WaitForChild("Other")
-otherTeamFolder.DescendantAdded:Connect(function(desc)
-    if AntiWalls then HandleWallPart(desc) end
-end)
+tabGameplay:CreateSection("Killdroid")
 
 --// Services
 local Players = game:GetService("Players")
@@ -1379,6 +1349,7 @@ tabGameplay:CreateToggle({
 	end
 })
 
+tabGameplay:CreateSection("Artful")
 
 -- ============================
 -- Implement Fast Artful
@@ -1427,8 +1398,8 @@ local function HoldImpl_CheckAttributes()
     local implementCooldown = char:GetAttribute("ImplementCooldown")
 
     if killerName=="Artful" and canTrigger and (implementCooldown==true or (type(implementCooldown)=="number" and implementCooldown>0)) then
-        task.wait(1.1)
-        HoldImpl_holdInAir(0.7,1.5)
+        task.wait(1.07)
+        HoldImpl_holdInAir(0.5,1.5)
         canTrigger=false
     end
 
@@ -1454,21 +1425,71 @@ tabGameplay:CreateToggle({
 
 -- Cargar valor guardado
 
---// Services
-local Workspace = game:GetService("Workspace")
-local Players = game:GetService("Players")
+tabGameplay:CreateToggle({
+    Name="Anti-Artful Walls",
+    CurrentValue=AntiWalls,
+    Callback=function(v) AntiWalls=v end
+})
 
---// State
+local function HandleWallPart(part)
+    if part and part.Name=="HumanoidRootPart" and part.Anchored==true then
+        part.CanCollide=false
+        part.CanTouch=false
+        part.Transparency=0.5
+    end
+end
+
+task.spawn(function()
+    while true do
+        task.wait(0.5)
+        if AntiWalls and Workspace:FindFirstChild("GameAssets") then
+            local teams = Workspace.GameAssets:FindFirstChild("Teams")
+            if teams and teams:FindFirstChild("Other") then
+                for _, desc in pairs(teams.Other:GetDescendants()) do
+                    HandleWallPart(desc)
+                end
+            end
+        end
+    end
+end)
+
+local otherTeamFolder = Workspace:WaitForChild("GameAssets"):WaitForChild("Teams"):WaitForChild("Other")
+otherTeamFolder.DescendantAdded:Connect(function(desc)
+    if AntiWalls then HandleWallPart(desc) end
+end)
+
+
+tabGameplay:CreateSection("Evil scary")
+
+---------------------------------------------------------
+-- Anti Evil Scary (SIN Module)
+---------------------------------------------------------
+
 local AntiEvilScary = false
-
---// Paths
-local Cleanable = Workspace
+local Cleanable = workspace
     :WaitForChild("GameAssets")
     :WaitForChild("Debris")
     :WaitForChild("Cleanable")
 
 ---------------------------------------------------------
--- TOGGLE: Anti Evil Scary
+-- FUNCIÓN: limpiar Touch dentro de EvilScary
+---------------------------------------------------------
+
+local function ClearEvilScary(evil)
+    for _, obj in ipairs(evil:GetDescendants()) do
+        -- Elimina TouchTransmitter (lo que detecta el touch)
+        if obj:IsA("TouchTransmitter") then
+            obj:Destroy()
+
+        -- Blindaje extra por si usan .Touched directo
+        elseif obj:IsA("BasePart") then
+            obj.CanTouch = false
+        end
+    end
+end
+
+---------------------------------------------------------
+-- TOGGLE
 ---------------------------------------------------------
 
 tabGameplay:CreateToggle({
@@ -1476,15 +1497,12 @@ tabGameplay:CreateToggle({
     CurrentValue = AntiEvilScary,
     Callback = function(Value)
         AntiEvilScary = Value
+        if not AntiEvilScary then return end
 
-        if not AntiEvilScary then
-            return
-        end
-
-        -- Limpiar existentes
+        -- Limpiar EvilScary ya existentes
         for _, obj in ipairs(Cleanable:GetChildren()) do
             if obj.Name == "EvilScary" then
-                Module:ClearTouchable(obj)
+                ClearEvilScary(obj)
             end
         end
     end
@@ -1496,7 +1514,7 @@ tabGameplay:CreateToggle({
 
 Cleanable.ChildAdded:Connect(function(child)
     if AntiEvilScary and child.Name == "EvilScary" then
-        Module:ClearTouchable(child)
+        ClearEvilScary(child)
     end
 end)
 
@@ -1593,6 +1611,7 @@ tabGameplay:CreateButton({
     end
 })
 
+tabGameplay:CreateSection("Anti-block")
 
 -- ============================
 -- No M1 when Blocking (You Killer)
